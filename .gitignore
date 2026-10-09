@@ -7,3 +7,6 @@ allure-results/
 allure-report/
 test-results/
 .env
+
+# Playwright MCP session artifacts (snapshots, logs, screenshots)
+.playwright-mcp/
