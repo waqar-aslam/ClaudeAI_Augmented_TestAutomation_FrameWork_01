@@ -1,0 +1,9 @@
+{
+  "note": "Dummy values only. The app never sends payment fields to the server (see docs/payment_test_scenarios.md).",
+  "valid": {"card_number": "4542 9931 9292 2293", "cvv": "123", "name_on_card": "QA Tester", "country": "India"},
+  "malformed_card_number": "abc",
+  "non_numeric_cvv": "abc",
+  "name_with_symbols": "12345!@#",
+  "too_long": {"card_number": "1111111111111111111111111111111111111111", "cvv": "999999999999", "name_on_card_length": 300},
+  "distinct_card_values": {"card_number": "4000 1234 5678 9010", "cvv": "987", "name_on_card": "Distinct Cardholder"}
+}

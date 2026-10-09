@@ -58,6 +58,10 @@ class ApiClient:
             self.remove_from_cart(item["_id"])
 
     # --- orders -----------------------------------------------------------
+    def create_order_raw(self, body: dict, authenticated: bool = True) -> APIResponse:
+        return self.context.post("order/create-order", data=body,
+                                 headers=self._headers if authenticated else {})
+
     def get_orders(self) -> list[dict]:
         return self.context.get(f"order/get-orders-for-customer/{self.user_id}",
                                 headers=self._headers).json().get("data") or []
