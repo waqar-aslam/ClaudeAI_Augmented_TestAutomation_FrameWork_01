@@ -16,20 +16,16 @@ def credentials() -> dict:
     return {"email": settings.user_email, "password": settings.user_password}
 
 
-@pytest.hookimpl(tryfirst=True, hookwrapper=True)
+@pytest.hookimpl(hookwrapper=True)
 def pytest_runtest_makereport(item, call):
     outcome = yield
-    setattr(item, f"rep_{call.when}", outcome.get_result())
-
-
-@pytest.fixture(autouse=True)
-def attach_screenshot_on_failure(request):
-    yield
-    rep = getattr(request.node, "rep_call", None)
-    page = next((v for k, v in request.node.funcargs.items() if k in ("page", "auth_page")), None)
-    if rep and rep.failed and page is not None:
-        allure.attach(page.screenshot(), name="failure-screenshot",
-                      attachment_type=allure.attachment_type.PNG)
+    report = outcome.get_result()
+    if report.when != "call" or not report.failed:
+        return
+    # Runs while fixtures are still alive, so the browser page can still be captured.
+    page = next((v for k, v in item.funcargs.items() if k in ("page", "auth_page")), None)
+    if page is not None and not page.is_closed():
+        allure.attach(page.screenshot(), name="failure-screenshot", attachment_type=allure.attachment_type.PNG)
         allure.attach(page.url, name="url", attachment_type=allure.attachment_type.TEXT)
 
 

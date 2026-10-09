@@ -11,6 +11,12 @@ class CartPage(BasePage):
         self.items = page.locator("ul.cartWrap li.items")
         self.checkout_button = page.get_by_role("button", name="Checkout")
 
+    @allure.step("Open cart page")
+    def open_page(self) -> "CartPage":
+        self.open("dashboard/cart")
+        expect(self.heading).to_be_visible()
+        return self
+
     @allure.step("Verify cart contains product: {product_name}")
     def expect_product(self, product_name: str) -> None:
         expect(self.heading).to_be_visible()

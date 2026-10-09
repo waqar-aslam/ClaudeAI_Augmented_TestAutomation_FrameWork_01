@@ -30,3 +30,19 @@ class CheckoutPage(BasePage):
     @allure.step("Place order")
     def place_order(self) -> None:
         self.place_order_button.click()
+
+    @allure.step("Verify checkout is blocked with the shipping-information message")
+    def expect_blocked_for_missing_shipping_info(self) -> None:
+        self.expect_toast("Please Enter Full Shipping Information")
+        expect(self.page).to_have_url(re.compile(r"#/dashboard/order\?"))
+
+    def capture_order_requests(self) -> list:
+        """Intercept create-order: record the request body and abort it so no real order is placed."""
+        captured: list = []
+
+        def handler(route):
+            captured.append(route.request.post_data)
+            route.abort()
+
+        self.page.route("**/order/create-order", handler)
+        return captured
