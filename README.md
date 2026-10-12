@@ -81,6 +81,10 @@ Key fixtures: `api` (authenticated API client, session-scoped), `clean_cart` (em
 - The UI only authenticates when the token is in `localStorage` before the app boots, hence `add_init_script` in `auth_page`.
 - The checkout card number is pre-filled by the app and left untouched; CVV and name use dummy values from `test_data/checkout.json`.
 
+## Failure analysis agent
+
+`.claude/agents/failure-analysis-agent.md` analyses a finished run. Ask Claude Code: "Use failure-analysis-agent to analyse the last run". It first runs the credential scan, then `python -m utils.summarise_allure` (a digest of failed/broken tests with a deterministic category hint), inspects screenshots and code, classifies each failure (application / automation / environment / test-data) and may re-run a single failing test (never `e2e` or `creates_data`) to detect flakiness. It is read-only; reports go to the git-ignored `reports/` folder.
+
 ## Claude Code QA agent
 
 `.claude/agents/qa-test-agent.md` defines the `qa-test-agent` subagent. Ask Claude Code, for example: "Use qa-test-agent to cover removing an item from the cart", and it will analyse scenarios, implement tests following the POM conventions, run them, classify failures (application / automation / environment / test-data) and report truthfully.

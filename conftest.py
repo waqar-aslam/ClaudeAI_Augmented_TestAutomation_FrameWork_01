@@ -13,11 +13,22 @@ def base_url() -> str:
     return settings.base_url
 
 
+class _Credentials(dict):
+    """Behaves like a dict, but never shows its values when printed.
+
+    pytest prints every fixture argument of a failing test ("credentials = {...}") into the failure
+    trace, which Allure then stores, so a plain dict would leak the password into the report.
+    """
+
+    def __repr__(self) -> str:
+        return "{'email': '<redacted>', 'password': '<redacted>'}"
+
+
 @pytest.fixture(scope="session")
 def credentials() -> dict:
     if not (settings.user_email and settings.user_password):
         pytest.skip("USER_EMAIL / USER_PASSWORD not set (see .env.example)")
-    return {"email": settings.user_email, "password": settings.user_password}
+    return _Credentials(email=settings.user_email, password=settings.user_password)
 
 
 @pytest.fixture(scope="session")

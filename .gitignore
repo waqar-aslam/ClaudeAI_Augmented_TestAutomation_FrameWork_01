@@ -10,3 +10,6 @@ test-results/
 
 # Playwright MCP session artifacts (snapshots, logs, screenshots)
 .playwright-mcp/
+
+# Failure analysis reports and re-run output
+reports/
