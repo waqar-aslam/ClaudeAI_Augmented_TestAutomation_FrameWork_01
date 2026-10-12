@@ -32,13 +32,19 @@ The project will eventually use Claude Code as an AI-assisted QA automation agen
 # Project Structure
 
 tests/
-    Contains test cases.
+    Contains test cases (ui/, api/, e2e/).
+
+api/
+    ApiClient over Playwright APIRequestContext.
+
+config/
+    Environment-based settings (credentials come from .env, never hard-coded).
 
 pages/
     Contains Page Object classes.
 
 utils/
-    Contains reusable utilities and helper functions.
+    Contains reusable utilities, e.g. scan_allure_results (credential/card-data leak check).
 
 test_data/
     Contains test data.

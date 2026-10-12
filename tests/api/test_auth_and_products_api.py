@@ -16,8 +16,8 @@ def test_login_returns_token_and_user_id(api_context, credentials):
 
 
 @allure.title("Login API rejects a wrong password with 400")
-def test_login_is_rejected_for_wrong_password(anonymous_api, credentials):
-    response = anonymous_api.login_raw(credentials["email"], "Wrong#Pass-1")
+def test_login_is_rejected_for_wrong_password(anonymous_api, credentials, wrong_password):
+    response = anonymous_api.login_raw(credentials["email"], wrong_password)
     assert response.status == 400
     assert response.json()["message"] == "Incorrect email or password."
 

@@ -1,7 +1,9 @@
 import json
+import re
 
 import allure
 import pytest
+from playwright.sync_api import expect
 
 pytestmark = [pytest.mark.ui, allure.feature("Payment form"), allure.story("Submission")]
 
@@ -50,3 +52,16 @@ def test_payment_fields_are_not_sent_to_create_order(checkout_page, order_reques
     for secret in (distinct["card_number"], distinct["card_number"].replace(" ", ""), distinct["cvv"],
                    distinct["name_on_card"]):
         assert secret not in raw, "payment data leaked into the create-order request"
+
+
+@allure.title("PAY-060 Clicking Place Order repeatedly sends create-order only once")
+@allure.description("create-order is stubbed with a fake 201, so no real order is created. "
+                    "The stub answers instantly; a slow real server could still allow duplicates.")
+def test_rapid_repeated_submit_sends_one_order_request(checkout_page, stubbed_order_requests, payment_data):
+    valid = payment_data["valid"]
+    checkout_page.fill_details(valid["cvv"], valid["name_on_card"], valid["country"])
+
+    checkout_page.place_order_rapidly(3)
+
+    expect(checkout_page.page).to_have_url(re.compile(r"#/dashboard/thanks"))
+    assert len(stubbed_order_requests) == 1, f"{len(stubbed_order_requests)} create-order requests were sent"

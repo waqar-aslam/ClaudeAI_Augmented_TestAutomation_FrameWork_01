@@ -25,10 +25,11 @@ copy .env.example .env      # then fill in USER_EMAIL and USER_PASSWORD
 ## Running tests
 
 ```powershell
-pytest                      # everything (results go to allure-results/, which is cleaned on each run)
+pytest                      # everything except e2e (results go to allure-results/ and accumulate)
 pytest -m api               # API only (fast, no browser)
 pytest -m ui                # UI only
-pytest -m e2e               # end-to-end business flow
+pytest -m e2e               # end-to-end flow; opt-in because it places a REAL order
+pytest -m creates_data      # opt-in: tests that may create records (e.g. create-order with an empty list)
 pytest tests/ui --headed    # watch the browser
 ```
 
@@ -40,17 +41,25 @@ The Allure CLI is a separate install (it is not a pip package), e.g. `scoop inst
 allure serve allure-results
 ```
 
-Failed UI tests attach a screenshot and the page URL. Login payloads and tokens are never attached.
+`allure-results/` is no longer wiped automatically; delete it before a run you want to report on (`Remove-Item -Recurse allure-results`).
+Each run also writes `environment.properties` (URLs only) and `categories.json` (known defects are grouped separately from skips and failures).
+
+Failed UI tests (including setup errors) attach a screenshot with **every input masked** and the page URL. Login payloads and tokens are never attached, and credentials/card data are never recorded as step parameters. After a run, verify with:
+
+```powershell
+python -m utils.scan_allure_results      # exits 1 if the password, e-mail or a card number is found
+```
 
 ## Layout
 
 ```
 config/settings.py     env-based settings
+utils/                 report-safety helpers (scan_allure_results, payment_data)
 api/client.py          ApiClient over Playwright APIRequestContext
 pages/                 Page Objects (locators + interactions + page checks); BasePage is the parent
 tests/ui|api|e2e/      tests describe business behaviour only
 test_data/             dummy checkout data
-conftest.py            fixtures: api, clean_cart, auth_page, checkout_data, failure screenshots
+conftest.py            fixtures: api, clean_cart, auth_page, checkout_page, order_requests, wrong_password; failure screenshots; Allure metadata
 .claude/agents/        qa-test-agent subagent
 ```
 
@@ -65,13 +74,16 @@ Key fixtures: `api` (authenticated API client, session-scoped), `clean_cart` (em
 
 ## Known limitations and notes
 
-- **The end-to-end test places a real demo order each run.** Orders cannot be removed without the destructive `delete-order` endpoint, which this framework never calls. The backend seems to keep only the 7 newest orders per user, so tests match orders by ID and never assert on counts.
+- **The end-to-end test places a real demo order each run it is selected** (`pytest -m e2e`; excluded from the default run via `-m "not e2e"` in `pytest.ini`). Orders cannot be removed without the destructive `delete-order` endpoint, which this framework never calls. The backend seems to keep only the 7 newest orders per user, so tests match orders by ID and never assert on counts.
 - **Shared account and backend:** other users or runs can change the data. Tests pick products at runtime instead of hard-coding names.
 - **Possible application defect:** `GET order/get-orders-details?id=<malformed id>` returns HTTP 500 with Mongoose/MongoDB error details. Not asserted as expected behaviour.
 - **Data oddity:** in older orders `productOrderedId` contains a date string and `orderDate` is null; use `_id` as the order ID.
 - The UI only authenticates when the token is in `localStorage` before the app boots, hence `add_init_script` in `auth_page`.
 - The checkout card number is pre-filled by the app and left untouched; CVV and name use dummy values from `test_data/checkout.json`.
-- `tests/test_example.py` is the original sample test against playwright.dev and is not part of this framework.
+
+## Failure analysis agent
+
+`.claude/agents/failure-analysis-agent.md` analyses a finished run. Ask Claude Code: "Use failure-analysis-agent to analyse the last run". It first runs the credential scan, then `python -m utils.summarise_allure` (a digest of failed/broken tests with a deterministic category hint), inspects screenshots and code, classifies each failure (application / automation / environment / test-data) and may re-run a single failing test (never `e2e` or `creates_data`) to detect flakiness. It is read-only; reports go to the git-ignored `reports/` folder.
 
 ## Claude Code QA agent
 

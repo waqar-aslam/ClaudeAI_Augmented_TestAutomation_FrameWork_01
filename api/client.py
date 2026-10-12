@@ -7,6 +7,17 @@ import allure
 from playwright.sync_api import APIRequestContext, APIResponse
 
 
+def _ok_json(response: APIResponse, what: str) -> dict:
+    """Return the JSON body of a successful response, else fail with the status and a short body excerpt.
+
+    Used by the helpers that tests rely on for setup/verification, so a broken backend or bad credentials
+    surface as a clear message instead of a KeyError. Request data (credentials, tokens) is never included.
+    """
+    if not response.ok:
+        raise AssertionError(f"{what} failed: HTTP {response.status} - {response.text()[:200]}")
+    return response.json()
+
+
 class ApiClient:
     def __init__(self, context: APIRequestContext, token: str | None = None, user_id: str | None = None):
         self.context = context
@@ -23,7 +34,7 @@ class ApiClient:
         return self.context.post("auth/login", data={"userEmail": email, "userPassword": password})
 
     def authenticate(self, email: str, password: str) -> "ApiClient":
-        body = self.login_raw(email, password).json()
+        body = _ok_json(self.login_raw(email, password), "API login")
         self.token, self.user_id = body["token"], body["userId"]
         return self
 
@@ -33,7 +44,7 @@ class ApiClient:
                                  headers=self._headers if authenticated else {})
 
     def get_products(self) -> list[dict]:
-        return self.get_products_raw().json()["data"]
+        return _ok_json(self.get_products_raw(), "API get products")["data"]
 
     # --- cart -------------------------------------------------------------
     @allure.step("API: add product to cart")
@@ -42,11 +53,11 @@ class ApiClient:
                                  data={"_id": self.user_id, "product": product})
 
     def get_cart_products(self) -> list[dict]:
-        body = self.context.get(f"user/get-cart-products/{self.user_id}", headers=self._headers).json()
+        body = _ok_json(self.context.get(f"user/get-cart-products/{self.user_id}", headers=self._headers), "API get cart products")
         return body.get("products", [])  # key is absent when the cart is empty
 
     def get_cart_count(self) -> int:
-        body = self.context.get(f"user/get-cart-count/{self.user_id}", headers=self._headers).json()
+        body = _ok_json(self.context.get(f"user/get-cart-count/{self.user_id}", headers=self._headers), "API get cart count")
         return body.get("count", 0)
 
     def remove_from_cart(self, product_id: str) -> APIResponse:
@@ -55,7 +66,7 @@ class ApiClient:
     @allure.step("API: empty the test user's cart")
     def clear_cart(self) -> None:
         for item in self.get_cart_products():
-            self.remove_from_cart(item["_id"])
+            _ok_json(self.remove_from_cart(item["_id"]), "API remove from cart")
 
     # --- orders -----------------------------------------------------------
     def create_order_raw(self, body: dict, authenticated: bool = True) -> APIResponse:
@@ -63,11 +74,11 @@ class ApiClient:
                                  headers=self._headers if authenticated else {})
 
     def get_orders(self) -> list[dict]:
-        return self.context.get(f"order/get-orders-for-customer/{self.user_id}",
-                                headers=self._headers).json().get("data") or []
+        response = self.context.get(f"order/get-orders-for-customer/{self.user_id}", headers=self._headers)
+        return _ok_json(response, "API get orders").get("data") or []
 
     def get_order_details_raw(self, order_id: str) -> APIResponse:
         return self.context.get(f"order/get-orders-details?id={order_id}", headers=self._headers)
 
     def get_order_details(self, order_id: str) -> dict:
-        return self.get_order_details_raw(order_id).json()["data"]
+        return _ok_json(self.get_order_details_raw(order_id), "API get order details")["data"]
