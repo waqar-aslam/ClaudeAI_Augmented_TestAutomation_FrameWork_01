@@ -21,14 +21,15 @@ def test_create_order_requires_token(anonymous_api):
     assert response.status == 401
 
 
-@pytest.mark.xfail(strict=True, reason="KNOWN DEFECT: create-order returns 201 'Order Placed Successfully' for an empty orders list")
+@pytest.mark.creates_data
+@pytest.mark.xfail(strict=True, raises=AssertionError, reason="KNOWN DEFECT: create-order returns 201 'Order Placed Successfully' for an empty orders list")
 @allure.title("Create-order should reject an empty orders list")
 def test_create_order_rejects_empty_orders_list(api):
     response = api.create_order_raw({"orders": []})
     assert response.status >= 400, f"got {response.status}: {response.text()[:100]}"
 
 
-@pytest.mark.xfail(strict=True, reason="KNOWN DEFECT: create-order returns 500 (unhandled) when the body has no 'orders'")
+@pytest.mark.xfail(strict=True, raises=AssertionError, reason="KNOWN DEFECT: create-order returns 500 (unhandled) when the body has no 'orders'")
 @allure.title("Create-order should answer a missing orders field with a 4xx, not 500")
 def test_create_order_rejects_missing_orders_field(api):
     response = api.create_order_raw({})

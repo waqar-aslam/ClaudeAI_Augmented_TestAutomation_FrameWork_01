@@ -1,7 +1,7 @@
 # Checkout & Payment Form – Test Scenarios
 
 Application: Let's Shop practice app – `https://rahulshettyacademy.com/client` (Angular SPA, API at `/api/ecom`).
-Explored: 2026-10-09 with Playwright MCP (Chrome), user `aslamwaqar313@gmail.com`. Credentials are read from `.env` (`USER_EMAIL` / `USER_PASSWORD`); none are stored in this document.
+Explored: 2026-10-09 with Playwright MCP (Chrome), the practice test user. Credentials are read from `.env` (`USER_EMAIL` / `USER_PASSWORD`); none are stored in this document.
 
 Status legend: **Confirmed** = observed in the browser/network this session · **Requires Investigation** = not proven, needs a further probe · **Not Applicable** = control does not allow the condition.
 Evidence legend: **[C]** confirmed by observation · **[I]** inferred · **[?]** unknown.
@@ -62,7 +62,7 @@ Common test data: `cvv=123`, `name=QA Tester`, `country=India`, default card `45
 | PAY-001 | Place order with valid dummy data | Valid data creates an order | Fill CVV, name, country (select from list) → Place Order | 201, redirect to thanks page with order id; order id/product match order API | P0 | High – **Existing** `test_placed_order_matches_api_response` (creates a real order) | Order `6ac909af…` created, confirmation shown, history lists it | Confirmed |
 | PAY-002 | Country autocomplete suggests and selects | Substring search, selection fills field | Type `ind` → choose India | Options contain India; input = `India` | P2 | High | 3 options for `ind`; selection sets `India` | Confirmed |
 | PAY-003 | Checkout summary matches cart | Name, price, quantity carried over | Open checkout from cart | ZARA COAT 3, $11500, Quantity 1 | P1 | High | Matched | Confirmed |
-| PAY-004 | New order appears in history for the user | Order belongs to user | After PAY-001 open Orders | Order id listed with product/price; API `orderBy` = test e-mail | P1 | High (read-only once order exists) | Listed; `orderBy=aslamwaqar313@gmail.com` | Confirmed |
+| PAY-004 | New order appears in history for the user | Order belongs to user | After PAY-001 open Orders | Order id listed with product/price; API `orderBy` = test e-mail | P1 | High (read-only once order exists) | Listed; `orderBy` = test user e-mail | Confirmed |
 | PAY-005 | Confirmation page content | Shows order id, CSV link | After PAY-001 | "Thankyou…" text, id, CSV download link | P2 | Medium | Present | Confirmed |
 
 ### B. Required fields
@@ -166,7 +166,7 @@ The app uses one combined checkout/payment page, so **no new `PaymentPage`** is 
 | Class | Change | Responsibility |
 |---|---|---|
 | `LoginPage`, `DashboardPage`, `CartPage` | none | existing |
-| `CheckoutPage` (extend) | add locators: `card_number`, `expiry_month`, `expiry_year`, `coupon_input`, `coupon_button`, `coupon_error`, `payment_tabs`, `shipping_email`, `country_options`; point `place_order_button` at `a.action__submit`; methods `fill_card(...)`, `select_expiry(m, y)`, `choose_country(name)`, `type_country_without_selecting(text)`, `apply_coupon(code)`, `order_summary()`, `read_card_form_values()`; keep `capture_order_requests()` and add `stub_order_success()` (`route.fulfill` 201) | locators + interactions only |
+| `CheckoutPage` (extend) | add locators: `card_number`, `expiry_month`, `expiry_year`, `coupon_input`, `coupon_button`, `coupon_error`, `payment_tabs`, `shipping_email`, `country_options`; `place_order_button` located by text (`get_by_text("Place Order")`); methods `fill_card(...)`, `select_expiry(m, y)`, `choose_country(name)`, `type_country_without_selecting(text)`, `apply_coupon(code)`, `order_summary()`, `read_card_form_values()`; keep `capture_order_requests()` and add `stub_order_success()` (`route.fulfill` 201) | locators + interactions only |
 | `OrderConfirmationPage` (extend) | `order_id()`, `csv_link` | existing class |
 | `OrderHistoryPage` | none | existing |
 
@@ -174,7 +174,7 @@ The app uses one combined checkout/payment page, so **no new `PaymentPage`** is 
 * `test_payment_required_fields.py` – PAY-010…015 (defect cases `xfail(strict=True)`)
 * `test_payment_input_validation.py` – PAY-020…024 (parametrised)
 * `test_payment_expiry.py` – PAY-030…032
-* `test_payment_methods_and_country.py` – PAY-002, 040…043, 050
+* `test_payment_methods_country_coupon.py` – PAY-002, 040…043, 050
 * `test_payment_submission.py` – PAY-060…062 (stubbed backend, no real orders)
 * `tests/e2e/` – PAY-001/004/005 stay in the existing e2e test (single real order per run)
 * `tests/api/` – PAY-070/071/072 using the `api` fixture and captured request body
@@ -183,7 +183,7 @@ The app uses one combined checkout/payment page, so **no new `PaymentPage`** is 
 * `conftest.py`: add `order_requests` fixture (captures and aborts create-order), `checkout_page` (cart seeded through the API, as the existing `checkout` fixture does).
 * `test_data/payment.json`: dummy card, CVV, names, boundary strings, expiry cases. Dummy data only.
 * Credentials stay in `.env` via `config/settings.py`; nothing hard-coded.
-* Allure: titles/steps on each test; a `mask_card()` helper in `utils/` so any attached text/screenshot hides card number/CVV.
+* Allure: titles/steps on each test; card/CVV/name are never passed as Allure step parameters (inline `with allure.step(...)`), failure screenshots mask every input, and `python -m utils.scan_allure_results` fails if credentials or card numbers appear in `allure-results/` (covers PAY-073 as a manual post-run check).
 
 **Order policy:** only PAY-001 places a real order (one per full run). All other submission tests abort or stub `create-order`.
 
@@ -191,3 +191,19 @@ The app uses one combined checkout/payment page, so **no new `PaymentPage`** is 
 1. Should defect scenarios be automated as `xfail(strict=True)` (current repo convention)? Recommended: yes.
 2. OK to run PAY-042 (free-text country) against the real API once, creating at most one extra order, to learn the server verdict?
 3. Is a valid coupon code known? Otherwise PAY-051 stays un-automated.
+
+---
+
+### Checkpoint 4 – P3 coverage (probed and automated 2026-10-12)
+Probed with a scratch script; `create-order` was aborted or stubbed with a fake 201, no order created.
+
+| ID | Result | Test |
+|---|---|---|
+| PAY-015 blank e-mail | Blocked with the shipping toast, no request | `test_checkout_is_blocked_when_shipping_email_is_empty` (pass) |
+| PAY-015 malformed e-mail (`abc`) | **Request sent** – DEFECT D-10 | `test_checkout_rejects_malformed_shipping_email` (xfail) |
+| PAY-024 whitespace-only CVV / name | **Request sent** – DEFECT D-11 | 2 cases in `test_payment_input_validation.py` (xfail) |
+| PAY-032 current month/year | Accepted (request sent) | `test_checkout_accepts_card_expiring_this_month` (pass) |
+| PAY-041 Paypal / SEPA / Invoice | Click changes nothing; Credit Card stays active – DEFECT D-12 (may be intentional in the demo app) | 3 cases in `test_payment_methods_country_coupon.py` (xfail) |
+| PAY-060 rapid triple click | 1 request, redirect to thanks (stubbed 201 answers instantly; slow-server duplicates not covered) | `test_rapid_repeated_submit_sends_one_order_request` (pass) |
+
+Still not automated: PAY-042 (needs a real-API probe, skipped by decision), PAY-051 (no known valid coupon), PAY-004/005 (need a real order), PAY-073 (manual scan only), PAY-033 (N/A).

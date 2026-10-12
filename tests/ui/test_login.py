@@ -16,9 +16,9 @@ def test_valid_user_can_login_and_see_dashboard(page, credentials):
 
 
 @allure.title("Invalid credentials are rejected with an error")
-def test_login_is_rejected_for_wrong_password(page, credentials):
+def test_login_is_rejected_for_wrong_password(page, credentials, wrong_password):
     login = LoginPage(page).open_page()
-    login.login(credentials["email"], "Wrong#Pass-1")
+    login.login(credentials["email"], wrong_password)
     login.expect_login_rejected()
 
 

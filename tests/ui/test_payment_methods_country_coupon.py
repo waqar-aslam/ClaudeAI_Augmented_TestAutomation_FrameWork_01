@@ -1,3 +1,5 @@
+import re
+
 import allure
 import pytest
 from playwright.sync_api import expect
@@ -53,3 +55,15 @@ def test_invalid_coupon_shows_error(checkout_page):
     checkout_page.apply_coupon("INVALID-QA")
 
     expect(checkout_page.invalid_coupon_message).to_be_visible()
+
+
+@allure.story("Payment methods")
+@allure.title("PAY-041 Choosing an alternative payment method makes it the active method")
+@pytest.mark.parametrize("method", [
+    pytest.param(m, id=m, marks=pytest.mark.xfail(
+        strict=True, raises=AssertionError, reason="KNOWN DEFECT D-12: alternative payment methods cannot be selected"))
+    for m in ("Paypal", "SEPA", "Invoice")])
+def test_alternative_payment_method_can_be_selected(checkout_page, method):
+    checkout_page.payment_tab(method).click()
+
+    expect(checkout_page.payment_tab(method)).to_have_class(re.compile(r"active"))

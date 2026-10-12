@@ -21,11 +21,12 @@ class LoginPage(BasePage):
         expect(self.login_button).to_be_visible()
         return self
 
-    @allure.step("Submit login form")
     def login(self, email: str, password: str) -> None:
-        self.email.fill(email)
-        self.password.fill(password)
-        self.login_button.click()
+        # Step is opened inline (not as a decorator) so the credentials never become Allure step parameters.
+        with allure.step("Submit login form"):
+            self.email.fill(email)
+            self.password.fill(password)
+            self.login_button.click()
 
     def expect_validation_errors(self) -> None:
         expect(self.email_required).to_be_visible()
